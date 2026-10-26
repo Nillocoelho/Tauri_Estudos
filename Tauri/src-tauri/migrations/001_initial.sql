@@ -1,0 +1,28 @@
+PRAGMA foreign_keys=ON;
+PRAGMA application_id=1095782991;
+PRAGMA user_version=1;
+CREATE TABLE settings (id INTEGER PRIMARY KEY CHECK(id=1), plan_name TEXT NOT NULL DEFAULT 'Projeto Aprovação 2030', target TEXT NOT NULL DEFAULT 'TJ-PB · Tecnologia da Informação', weekly_minutes INTEGER NOT NULL DEFAULT 600 CHECK(weekly_minutes BETWEEN 1 AND 10080), default_minutes INTEGER NOT NULL DEFAULT 60 CHECK(default_minutes BETWEEN 1 AND 480), theme TEXT NOT NULL DEFAULT 'dark' CHECK(theme IN ('dark','light')), study_time TEXT NOT NULL DEFAULT '19:00', reminder_before INTEGER NOT NULL DEFAULT 10 CHECK(reminder_before BETWEEN 0 AND 120), reminders INTEGER NOT NULL DEFAULT 0 CHECK(reminders IN (0,1)), close_to_tray INTEGER NOT NULL DEFAULT 0 CHECK(close_to_tray IN (0,1)), review_days TEXT NOT NULL DEFAULT '1,7,30', onboarding INTEGER NOT NULL DEFAULT 0 CHECK(onboarding IN (0,1)));
+INSERT INTO settings(id) VALUES(1);
+CREATE TABLE disciplines (id TEXT PRIMARY KEY, name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 120), category TEXT NOT NULL, color TEXT NOT NULL, priority INTEGER NOT NULL DEFAULT 2 CHECK(priority BETWEEN 1 AND 5), active INTEGER NOT NULL DEFAULT 1 CHECK(active IN(0,1)));
+CREATE TABLE topics (id TEXT PRIMARY KEY, discipline_id TEXT NOT NULL REFERENCES disciplines(id) ON DELETE CASCADE, name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 200), position INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'Não iniciado' CHECK(status IN ('Não iniciado','Em andamento','Estudado','Revisão necessária')), notes TEXT NOT NULL DEFAULT '', lesson_url TEXT NOT NULL DEFAULT '', pdf_url TEXT NOT NULL DEFAULT '', questions_url TEXT NOT NULL DEFAULT '', last_studied TEXT);
+CREATE TABLE study_cycles (id TEXT PRIMARY KEY, name TEXT NOT NULL, cursor INTEGER NOT NULL DEFAULT 0 CHECK(cursor>=0));
+INSERT INTO study_cycles(id,name) VALUES('main','Ciclo principal');
+CREATE TABLE cycle_items (id TEXT PRIMARY KEY, cycle_id TEXT NOT NULL DEFAULT 'main' REFERENCES study_cycles(id) ON DELETE CASCADE, discipline_id TEXT NOT NULL REFERENCES disciplines(id) ON DELETE CASCADE, position INTEGER NOT NULL CHECK(position>=0), minutes INTEGER NOT NULL DEFAULT 60 CHECK(minutes BETWEEN 1 AND 480), priority INTEGER NOT NULL DEFAULT 2 CHECK(priority BETWEEN 1 AND 5), paused INTEGER NOT NULL DEFAULT 0 CHECK(paused IN(0,1)));
+CREATE TABLE study_sessions (id TEXT PRIMARY KEY, discipline_id TEXT NOT NULL REFERENCES disciplines(id) ON DELETE RESTRICT, topic_id TEXT REFERENCES topics(id) ON DELETE SET NULL, cycle_item_id TEXT REFERENCES cycle_items(id) ON DELETE SET NULL, planned_minutes INTEGER NOT NULL CHECK(planned_minutes BETWEEN 1 AND 480), started_at TEXT NOT NULL, ended_at TEXT, state TEXT NOT NULL CHECK(state IN('running','paused','recovery','completed')), notes TEXT NOT NULL DEFAULT '');
+CREATE UNIQUE INDEX one_active_session ON study_sessions((1)) WHERE state!='completed';
+CREATE TABLE session_intervals (id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES study_sessions(id) ON DELETE CASCADE, started_at TEXT NOT NULL, checkpoint_at TEXT NOT NULL, ended_at TEXT, CHECK(checkpoint_at>=started_at), CHECK(ended_at IS NULL OR ended_at>=started_at));
+CREATE UNIQUE INDEX one_open_interval ON session_intervals(session_id) WHERE ended_at IS NULL;
+CREATE TABLE question_records (id TEXT PRIMARY KEY, discipline_id TEXT NOT NULL REFERENCES disciplines(id) ON DELETE RESTRICT, topic_id TEXT REFERENCES topics(id) ON DELETE SET NULL, total INTEGER NOT NULL CHECK(total BETWEEN 1 AND 100000), correct INTEGER NOT NULL CHECK(correct>=0 AND correct<=total), errors INTEGER GENERATED ALWAYS AS(total-correct) VIRTUAL, date TEXT NOT NULL, board TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '');
+CREATE TABLE error_notes (id TEXT PRIMARY KEY, discipline_id TEXT NOT NULL REFERENCES disciplines(id) ON DELETE RESTRICT, topic_id TEXT REFERENCES topics(id) ON DELETE SET NULL, description TEXT NOT NULL CHECK(length(trim(description))>0), explanation TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, reviewed INTEGER NOT NULL DEFAULT 0 CHECK(reviewed IN(0,1)));
+CREATE TABLE reviews (id TEXT PRIMARY KEY, topic_id TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE, due_at TEXT NOT NULL, stage INTEGER NOT NULL CHECK(stage BETWEEN 0 AND 9), state TEXT NOT NULL DEFAULT 'pending' CHECK(state IN('pending','done')), performance INTEGER CHECK(performance BETWEEN 0 AND 100), completed_at TEXT);
+CREATE UNIQUE INDEX one_pending_review ON reviews(topic_id) WHERE state='pending';
+CREATE INDEX sessions_date ON study_sessions(started_at);
+CREATE INDEX intervals_session ON session_intervals(session_id);
+CREATE INDEX questions_date ON question_records(date);
+CREATE INDEX topics_discipline ON topics(discipline_id);
+CREATE INDEX reviews_due ON reviews(state,due_at);
+CREATE TRIGGER session_completed AFTER UPDATE OF state ON study_sessions WHEN NEW.state='completed' AND OLD.state!='completed' BEGIN
+ UPDATE session_intervals SET ended_at=checkpoint_at WHERE session_id=NEW.id AND ended_at IS NULL;
+ UPDATE topics SET last_studied=NEW.ended_at WHERE id=NEW.topic_id;
+ UPDATE study_cycles SET cursor=COALESCE((SELECT position+1 FROM cycle_items WHERE id=NEW.cycle_item_id),cursor) WHERE id='main';
+END;

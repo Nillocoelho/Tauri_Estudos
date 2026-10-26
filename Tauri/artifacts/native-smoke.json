@@ -1,0 +1,5 @@
+{
+  "passed": true,
+  "test": "WebView2 + IPC real + SQLite + worker + pausa/retomada + encerramento inesperado + recuperação + histórico",
+  "at": "2026-10-26T02:16:26.417Z"
+}

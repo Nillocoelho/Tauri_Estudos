@@ -1,0 +1,16 @@
+{
+  "identifier": "br.com.projetoaprovacao.smoketest",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Projeto Aprovação — teste isolado",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 760,
+        "minHeight": 600,
+        "visible": false
+      }
+    ]
+  }
+}

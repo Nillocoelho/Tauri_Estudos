@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Projeto Aprovação",
+  "version": "0.1.0",
+  "identifier": "br.com.projetoaprovacao.desktop",
+  "build": {
+    "beforeDevCommand": "npm.cmd run dev",
+    "beforeBuildCommand": "npm.cmd run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Projeto Aprovação",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 760,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
+    "windows": {
+      "nsis": {
+        "languages": ["PortugueseBR"],
+        "displayLanguageSelector": false,
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": { "sql": { "preload": ["sqlite:aprovacao.db"] } }
+}

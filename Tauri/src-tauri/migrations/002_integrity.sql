@@ -1,0 +1,8 @@
+ALTER TABLE settings ADD COLUMN completion_notice INTEGER NOT NULL DEFAULT 1 CHECK(completion_notice IN(0,1));
+PRAGMA user_version=2;
+CREATE TRIGGER session_topic_insert BEFORE INSERT ON study_sessions WHEN NEW.topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM topics WHERE id=NEW.topic_id AND discipline_id=NEW.discipline_id) BEGIN SELECT RAISE(ABORT,'Assunto de outra disciplina'); END;
+CREATE TRIGGER question_topic_insert BEFORE INSERT ON question_records WHEN NEW.topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM topics WHERE id=NEW.topic_id AND discipline_id=NEW.discipline_id) BEGIN SELECT RAISE(ABORT,'Assunto de outra disciplina'); END;
+CREATE TRIGGER question_topic_update BEFORE UPDATE ON question_records WHEN NEW.topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM topics WHERE id=NEW.topic_id AND discipline_id=NEW.discipline_id) BEGIN SELECT RAISE(ABORT,'Assunto de outra disciplina'); END;
+CREATE TRIGGER error_topic_insert BEFORE INSERT ON error_notes WHEN NEW.topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM topics WHERE id=NEW.topic_id AND discipline_id=NEW.discipline_id) BEGIN SELECT RAISE(ABORT,'Assunto de outra disciplina'); END;
+CREATE TRIGGER error_topic_update BEFORE UPDATE ON error_notes WHEN NEW.topic_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM topics WHERE id=NEW.topic_id AND discipline_id=NEW.discipline_id) BEGIN SELECT RAISE(ABORT,'Assunto de outra disciplina'); END;
+CREATE TRIGGER topic_discipline_immutable BEFORE UPDATE OF discipline_id ON topics WHEN NEW.discipline_id!=OLD.discipline_id BEGIN SELECT RAISE(ABORT,'Crie outro assunto para alterar a disciplina'); END;
